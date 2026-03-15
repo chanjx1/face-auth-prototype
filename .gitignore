@@ -1,0 +1,29 @@
+# --- Backend (Python/FastAPI) ---
+backend/venv/
+backend/__pycache__/
+backend/.pytest_cache/
+backend/*.pyc
+backend/.env
+
+# Project-Specific Backend Data
+backend/temp_images/
+backend/storage/
+backend/my_face.jpg
+backend/*.deepface/
+backend/.deepface/
+
+# --- Frontend (Expo/React Native) ---
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.env
+
+# --- OS & IDE Specific ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
