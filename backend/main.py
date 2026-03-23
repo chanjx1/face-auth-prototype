@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from deepface import DeepFace
 from processor import generate_face_embedding
+from database import save_user, find_nearest_user
 
 app = FastAPI()
 
@@ -30,37 +31,53 @@ class VerifyRequest(BaseModel):
 async def health():
     return {"status": "ok", "info": "DeepFace backend is live"}
 
-@app.post("/verify-face")
-async def verify_face(request: VerifyRequest):
-    temp_path = f"{UPLOAD_DIR}/{uuid.uuid4()}.jpg"
-
+@app.post("/register")
+async def register(request: VerifyRequest):
+    temp_path = f"{UPLOAD_DIR}/reg_{uuid.uuid4()}.jpg"
     try:
-        # 1. Decode and save the live photo from the phone
-        image_data = base64.b64decode(request.image_base64)
+        # 1. Decode and save
         with open(temp_path, "wb") as f:
-            f.write(image_data)
-
-        # 2. GENERATE EMBEDDING (The New Part)
-        # We use the function we just moved to processor.py
-        live_embedding = generate_face_embedding(temp_path)
-
-        if live_embedding is None:
-            return {"verified": False, "error": "No face detected. Please try again."}
-
-        # 3. DATABASE LOOKUP (Placeholder for database.py)
-        # This is where we will ask PostgreSQL: "Who matches these 512 numbers?"
-        # For now, we'll return the numbers so you can see it's working.
+            f.write(base64.b64decode(request.image_base64))
         
-        return {
-            "status": "Success",
-            "message": "Face converted to mathematical embedding!",
-            "embedding_preview": live_embedding[:5], # Show first 5 numbers
-            "total_dimensions": len(live_embedding)
-        }
+        # 2. Generate embedding
+        embedding = generate_face_embedding(temp_path)
+        if not embedding:
+            return {"status": "Error", "message": "No face detected"}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # 3. Save to PostgreSQL
+        success = save_user(request.user_id, embedding)
+        if success:
+            return {"status": "Success", "message": f"User {request.user_id} registered!"}
+        return {"status": "Error", "message": "Database save failed"}
     finally:
-        # 4. Clean up the temp file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        if os.path.exists(temp_path): os.remove(temp_path)
+
+@app.post("/verify-face")
+async def verify(request: VerifyRequest):
+    temp_path = f"{UPLOAD_DIR}/val_{uuid.uuid4()}.jpg"
+    try:
+        with open(temp_path, "wb") as f:
+            f.write(base64.b64decode(request.image_base64))
+        
+        live_embedding = generate_face_embedding(temp_path)
+        if not live_embedding:
+            return {"verified": False, "error": "No face detected"}
+
+        # Search the DB for the closest match
+        match = find_nearest_user(live_embedding)
+        
+        if match:
+            username, distance = match
+            print(f"🔍 DEBUG: Match found for {username} with distance: {distance}")
+            
+            # Cosine Distance < 0.68 means "Match"
+            is_verified = distance < 0.68 
+            
+            return {
+                "verified": is_verified,
+                "user": username,
+                "distance": float(distance)
+            }
+        return {"verified": False, "error": "Database is empty"}
+    finally:
+        if os.path.exists(temp_path): os.remove(temp_path)

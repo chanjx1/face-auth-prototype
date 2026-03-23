@@ -12,7 +12,7 @@ This prototype integrates a **FastAPI** backend with a **React Native (Expo SDK 
 1. `cd backend`
 2. Create venv: `python -m venv venv`
 3. Activate: `venv\Scripts\activate` (Windows)
-4. Install: `pip install fastapi uvicorn deepface tf-keras opencv-python python-multipart`
+4. Install: `pip install fastapi uvicorn deepface tf-keras opencv-python python-multipart psycopg2-binary pgvector`
 5. **Add Reference**: Place a photo of yourself in the `backend/` folder named `my_face.jpg`.
 6. Run: `uvicorn main:app --host 0.0.0.0 --port 8000`
 
