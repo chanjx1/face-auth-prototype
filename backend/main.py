@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from deepface import DeepFace
+from processor import generate_face_embedding
 
 app = FastAPI()
 
@@ -31,37 +32,35 @@ async def health():
 
 @app.post("/verify-face")
 async def verify_face(request: VerifyRequest):
-    # Ensure you have a photo of yourself named 'my_face.jpg' in the backend folder!
-    reference_path = "my_face.jpg" 
     temp_path = f"{UPLOAD_DIR}/{uuid.uuid4()}.jpg"
 
-    if not os.path.exists(reference_path):
-        raise HTTPException(status_code=404, detail="Reference image 'my_face.jpg' not found.")
-
     try:
-        # 2. Decode the incoming image from your phone
+        # 1. Decode and save the live photo from the phone
         image_data = base64.b64decode(request.image_base64)
         with open(temp_path, "wb") as f:
             f.write(image_data)
 
-        # 3. Perform the Face Comparison
-        # This will download models on the first run (ArcFace & RetinaFace)
-        result = DeepFace.verify(
-            img1_path = temp_path,
-            img2_path = reference_path,
-            model_name = "ArcFace",
-            detector_backend = "retinaface"
-        )
+        # 2. GENERATE EMBEDDING (The New Part)
+        # We use the function we just moved to processor.py
+        live_embedding = generate_face_embedding(temp_path)
 
-        # 4. Clean up the temp file
-        os.remove(temp_path)
+        if live_embedding is None:
+            return {"verified": False, "error": "No face detected. Please try again."}
 
+        # 3. DATABASE LOOKUP (Placeholder for database.py)
+        # This is where we will ask PostgreSQL: "Who matches these 512 numbers?"
+        # For now, we'll return the numbers so you can see it's working.
+        
         return {
-            "verified": bool(result["verified"]),
-            "distance": float(result["distance"]),
-            "threshold": float(result["threshold"])
+            "status": "Success",
+            "message": "Face converted to mathematical embedding!",
+            "embedding_preview": live_embedding[:5], # Show first 5 numbers
+            "total_dimensions": len(live_embedding)
         }
 
     except Exception as e:
-        if os.path.exists(temp_path): os.remove(temp_path)
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # 4. Clean up the temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)

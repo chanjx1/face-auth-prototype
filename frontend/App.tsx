@@ -11,7 +11,7 @@ export default function FaceCaptureScreen() {
   const cameraRef = useRef<CameraView>(null);
 
   // Configuration for your local FastAPI server
-  const BACKEND_URL = "http://192.168.3.106:8000";
+  const BACKEND_URL = "http://10.100.91.16:8000";
 
   if (!permission) return <View style={styles.container} />;
 
@@ -59,10 +59,14 @@ export default function FaceCaptureScreen() {
         }
 
         const result = await response.json();
-        Alert.alert(
-          result.verified ? "Verified ✅" : "Failed ❌", 
-          `Match Score: ${result.distance?.toFixed(4) || 'N/A'}`
-        );
+        if (result.status === "Success") {
+          Alert.alert(
+            "Face Embedded! 🧠",
+            `We turned your face into ${result.total_dimensions} numbers.\n\nPreview: ${result.embedding_preview.map((n: number) => n.toFixed(2)).join(', ')}...`
+          );
+        } else {
+          Alert.alert("Failed ❌", result.error || "Unknown Error");
+        }
         
       } catch (error) {
         console.error("Capture/Verify Error:", error);
