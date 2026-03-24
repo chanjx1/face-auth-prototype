@@ -14,7 +14,7 @@ def generate_face_embedding(image_path: str):
             enforce_detection = True
         )
         
-        # We only care about the first face found in the photo
+        # Only care about the first face found in the photo
         return results[0]["embedding"]
         
     except ValueError:

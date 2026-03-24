@@ -3,17 +3,16 @@ from pgvector.psycopg2 import register_vector
 import numpy as np
 
 # Database connection settings
-# Since your password was empty, we leave it out or use an empty string
 DB_CONFIG = {
     "host": "localhost",
     "database": "postgres",
     "user": "postgres",
-    "password": "Jx!0531927" 
+    "password": "xxx" # Change this to your postgres admin pw
 }
 
 def get_connection():
     conn = psycopg2.connect(**DB_CONFIG)
-    register_vector(conn) # This tells Python how to handle the 'vector' type
+    register_vector(conn)
     return conn
 
 def save_user(username, embedding):
@@ -40,7 +39,7 @@ def find_nearest_user(live_embedding):
         conn = get_connection()
         cur = conn.cursor()
         
-        # We add '::vector' to explicitly cast the input
+        # add '::vector' to explicitly cast the input
         cur.execute(
             "SELECT username, face_embedding <=> %s::vector AS distance FROM users ORDER BY distance LIMIT 1",
             (live_embedding,)

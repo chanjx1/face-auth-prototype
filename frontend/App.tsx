@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
@@ -7,7 +7,8 @@ export default function FaceCaptureScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [isReady, setIsReady] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<'register' | 'verify'>('register'); // NEW: Mode toggle
+  const [mode, setMode] = useState<'register' | 'verify'>('register');
+  const [username, setUsername] = useState('');
   const cameraRef = useRef<CameraView>(null);
 
   const BACKEND_URL = "http://10.100.91.16:8000";
@@ -26,6 +27,11 @@ export default function FaceCaptureScreen() {
   }
 
   const captureAndProcess = async () => {
+    if (mode === 'register' && username.trim() === '') {
+      Alert.alert("Wait!", "Please enter a name before enrolling.");
+      return;
+    }
+
     if (cameraRef.current && isReady && !loading) {
       setLoading(true);
       try {
@@ -40,14 +46,13 @@ export default function FaceCaptureScreen() {
           { base64: true, format: SaveFormat.JPEG }
         );
 
-        // Dynamic URL based on mode
         const endpoint = mode === 'register' ? 'register' : 'verify-face';
         
         const response = await fetch(`${BACKEND_URL}/${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            user_id: "chan_jun_xi", 
+            user_id: username.trim() || "unknown",
             image_base64: resized.base64 
           }),
         });
@@ -56,18 +61,18 @@ export default function FaceCaptureScreen() {
 
         const result = await response.json();
 
-        // Handle Different Response Logic
         if (mode === 'register') {
           if (result.status === "Success") {
-            Alert.alert("Registration Complete ✅", result.message);
-            setMode('verify'); // Automatically switch to verify mode after success
+            Alert.alert("Registration Complete ✅", `Welcome, ${username}!`);
+            setMode('verify');
+            setUsername(''); // Clear input for privacy
           } else {
             Alert.alert("Registration Failed ❌", result.message);
           }
         } else {
-          // Verification Response
           if (result.verified) {
-            Alert.alert("Verified ✅", `Welcome back, ${result.user}!\nDistance: ${result.distance.toFixed(4)}`);
+            // result.user comes from the database match!
+            Alert.alert("Identity Confirmed ✅", `Hello, ${result.user}!\nMatch confidence is high.`);
           } else {
             Alert.alert("Access Denied ❌", result.error || "User not recognized.");
           }
@@ -84,7 +89,6 @@ export default function FaceCaptureScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Toggle */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={[styles.toggleBtn, mode === 'register' && styles.activeToggle]} 
@@ -99,6 +103,19 @@ export default function FaceCaptureScreen() {
           <Text style={styles.toggleText}>Verify</Text>
         </TouchableOpacity>
       </View>
+
+      {/* 5. Add the Input Field only for Register Mode */}
+      {mode === 'register' && (
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter full name..."
+            placeholderTextColor="#888"
+            value={username}
+            onChangeText={setUsername}
+          />
+        </View>
+      )}
 
       <CameraView 
         style={styles.camera} 
@@ -117,7 +134,7 @@ export default function FaceCaptureScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>
-              {mode === 'register' ? "Enroll Face" : "Scan to Login"}
+              {mode === 'register' ? "Enroll Face" : "Scan My Face"}
             </Text>
           )}
         </TouchableOpacity>
@@ -128,15 +145,17 @@ export default function FaceCaptureScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  header: { flexDirection: 'row', marginTop: 50, justifyContent: 'center', gap: 10 },
+  header: { flexDirection: 'row', marginTop: 50, marginBottom: 10, justifyContent: 'center', gap: 10 },
   toggleBtn: { padding: 10, borderRadius: 20, backgroundColor: '#333', width: 100, alignItems: 'center' },
   activeToggle: { backgroundColor: '#4A90E2' },
   toggleText: { color: '#fff', fontWeight: 'bold' },
-  message: { color: '#fff', textAlign: 'center', marginBottom: 20, paddingHorizontal: 20 },
+  inputContainer: { paddingHorizontal: 20, marginBottom: 10 },
+  input: { backgroundColor: '#222', color: '#fff', padding: 15, borderRadius: 10, fontSize: 16, borderBottomWidth: 2, borderBottomColor: '#4A90E2' },
   camera: { flex: 4, borderRadius: 20, overflow: 'hidden', margin: 10 },
   bottomControls: { flex: 1, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
-  button: { backgroundColor: '#4A90E2', padding: 15, borderRadius: 10 },
   captureBtn: { backgroundColor: '#FF4757', paddingVertical: 18, paddingHorizontal: 40, borderRadius: 30, minWidth: 200, alignItems: 'center' },
   disabledBtn: { backgroundColor: '#555' },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  message: { color: '#fff', textAlign: 'center', marginBottom: 20, paddingHorizontal: 20 },
+  button: { backgroundColor: '#4A90E2', padding: 15, borderRadius: 10 },
 });
