@@ -104,18 +104,17 @@ export default function FaceCaptureScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* 5. Add the Input Field only for Register Mode */}
-      {mode === 'register' && (
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter full name..."
-            placeholderTextColor="#888"
-            value={username}
-            onChangeText={setUsername}
-          />
-        </View>
-      )}
+      {/* MODIFIED: Always show the Input Field so the user can identify themselves for 1:1 verification */}
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          // Dynamic placeholder helps the user understand what to do in each mode
+          placeholder={mode === 'register' ? "Enter full name to register..." : "Enter your username to login..."}
+          placeholderTextColor="#888"
+          value={username}
+          onChangeText={setUsername}
+        />
+      </View>
 
       <CameraView 
         style={styles.camera} 
@@ -134,7 +133,7 @@ export default function FaceCaptureScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>
-              {mode === 'register' ? "Enroll Face" : "Scan My Face"}
+              {mode === 'register' ? "Enroll Face" : "Verify Identity"}
             </Text>
           )}
         </TouchableOpacity>

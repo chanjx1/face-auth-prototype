@@ -33,6 +33,26 @@ def save_user(username, embedding):
         print(f"Database Error: {e}")
         return False
 
+def verify_user_1to1(username, live_embedding):
+    """Fetches a specific user and calculates distance to their stored embedding."""
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        
+        # We add a WHERE clause to filter for the specific user
+        cur.execute(
+            "SELECT username, face_embedding <=> %s::vector AS distance "
+            "FROM users WHERE username = %s",
+            (live_embedding, username)
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row # Returns (username, distance) or None if user doesn't exist
+    except Exception as e:
+        print(f"Search Error: {e}")
+        return None
+
 def find_nearest_user(live_embedding):
     """Searches the DB for the closest face match."""
     try:

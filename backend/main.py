@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from deepface import DeepFace
 from processor import generate_face_embedding
-from database import save_user, find_nearest_user
+from database import save_user, find_nearest_user, verify_user_1to1
 
 app = FastAPI()
 
@@ -63,14 +63,14 @@ async def verify(request: VerifyRequest):
         if not live_embedding:
             return {"verified": False, "error": "No face detected"}
 
-        # Search the DB for the closest match
-        match = find_nearest_user(live_embedding)
+        # 1:1 Logic: Search specifically for the user_id provided in the request
+        match = verify_user_1to1(request.user_id, live_embedding)
         
         if match:
             username, distance = match
-            print(f"🔍 DEBUG: Match found for {username} with distance: {distance}")
+            print(f"🔍 DEBUG: 1:1 Verification for {username} - Distance: {distance}")
             
-            # Cosine Distance < 0.68 means "Match"
+            # Threshold stays at 0.68 for ArcFace
             is_verified = distance < 0.68 
             
             return {
@@ -78,6 +78,8 @@ async def verify(request: VerifyRequest):
                 "user": username,
                 "distance": float(distance)
             }
-        return {"verified": False, "error": "Database is empty"}
+        
+        # If no row is returned, the username wasn't found in Postgres
+        return {"verified": False, "error": f"User '{request.user_id}' not found in database."}
     finally:
         if os.path.exists(temp_path): os.remove(temp_path)
